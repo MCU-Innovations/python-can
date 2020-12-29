@@ -11,6 +11,7 @@ BACKENDS = {
     "kvaser": ("can.interfaces.kvaser", "KvaserBus"),
     "socketcan": ("can.interfaces.socketcan", "SocketcanBus"),
     "serial": ("can.interfaces.serial.serial_can", "SerialBus"),
+    "usb_can_analyzer": ("can.interfaces.serial.usb_can_analyzer", "UsbCanAnalyzer"),
     "pcan": ("can.interfaces.pcan", "PcanBus"),
     "usb2can": ("can.interfaces.usb2can", "Usb2canBus"),
     "ixxat": ("can.interfaces.ixxat", "IXXATBus"),
@@ -30,10 +31,7 @@ BACKENDS = {
 }
 
 BACKENDS.update(
-    {
-        interface.name: (interface.module_name, interface.attrs[0])
-        for interface in iter_entry_points("can.interface")
-    }
+    {interface.name: (interface.module_name, interface.attrs[0]) for interface in iter_entry_points("can.interface")}
 )
 
 VALID_INTERFACES = frozenset(list(BACKENDS.keys()))
