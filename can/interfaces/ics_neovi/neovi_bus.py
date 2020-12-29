@@ -14,6 +14,7 @@ import tempfile
 from collections import deque, defaultdict
 from itertools import cycle
 from threading import Event
+import time
 
 from can import Message, CanError, BusABC
 
@@ -23,8 +24,7 @@ try:
     import ics
 except ImportError as ie:
     logger.warning(
-        "You won't be able to use the ICS NeoVi can backend without the "
-        "python-ics module installed!: %s",
+        "You won't be able to use the ICS NeoVi can backend without the " "python-ics module installed!: %s",
         ie,
     )
     ics = None
@@ -35,8 +35,7 @@ try:
 except ImportError as ie:
 
     logger.warning(
-        "Using ICS NeoVi can backend without the "
-        "filelock module installed may cause some issues!: %s",
+        "Using ICS NeoVi can backend without the " "filelock module installed may cause some issues!: %s",
         ie,
     )
 
@@ -166,9 +165,7 @@ class NeoViBus(BusABC):
             if kwargs.get("fd", False):
                 if "data_bitrate" in kwargs:
                     for channel in self.channels:
-                        ics.set_fd_bit_rate(
-                            self.dev, kwargs.get("data_bitrate"), channel
-                        )
+                        ics.set_fd_bit_rate(self.dev, kwargs.get("data_bitrate"), channel)
         except ics.RuntimeError as re:
             logger.error(re)
             err = ICSApiError(*ics.get_last_api_error(self.dev))
@@ -177,8 +174,8 @@ class NeoViBus(BusABC):
             finally:
                 raise err
 
-        self._use_system_timestamp = bool(kwargs.get("use_system_timestamp", False))
-        self._receive_own_messages = kwargs.get("receive_own_messages", True)
+        self._use_system_timestamp = bool(kwargs.get("use_system_timestamp", True))
+        self._receive_own_messages = kwargs.get("receive_own_messages", False)
 
         self.channel_info = "%s %s CH:%s" % (
             self.dev.Name,
@@ -199,9 +196,7 @@ class NeoViBus(BusABC):
             if hasattr(ics, netid):
                 channel = getattr(ics, netid)
             else:
-                raise ValueError(
-                    "channel must be an integer or " "a valid ICS channel name"
-                )
+                raise ValueError("channel must be an integer or " "a valid ICS channel name")
         return channel
 
     @staticmethod
@@ -240,10 +235,7 @@ class NeoViBus(BusABC):
             return []
 
         # TODO: add the channel(s)
-        return [
-            {"interface": "neovi", "serial": NeoViBus.get_serial_number(device)}
-            for device in devices
-        ]
+        return [{"interface": "neovi", "serial": NeoViBus.get_serial_number(device)} for device in devices]
 
     def _find_device(self, type_filter=None, serial=None):
         if type_filter is not None:
@@ -307,7 +299,7 @@ class NeoViBus(BusABC):
             # events or data which is not synced with the neoVI timestamp.
             #
             # Currently, TimeSystem2 is not used.
-            return ics_msg.TimeSystem
+            return time.perf_counter()  # ics_msg.TimeSystem
         else:
             # This is the hardware time stamp.
             return ics.get_timestamp_for_msg(self.dev, ics_msg)
@@ -329,15 +321,9 @@ class NeoViBus(BusABC):
                 is_extended_id=bool(ics_msg.StatusBitField & ics.SPY_STATUS_XTD_FRAME),
                 is_fd=is_fd,
                 is_rx=not bool(ics_msg.StatusBitField & ics.SPY_STATUS_TX_MSG),
-                is_remote_frame=bool(
-                    ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME
-                ),
-                error_state_indicator=bool(
-                    ics_msg.StatusBitField3 & ics.SPY_STATUS3_CANFD_ESI
-                ),
-                bitrate_switch=bool(
-                    ics_msg.StatusBitField3 & ics.SPY_STATUS3_CANFD_BRS
-                ),
+                is_remote_frame=bool(ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME),
+                error_state_indicator=bool(ics_msg.StatusBitField3 & ics.SPY_STATUS3_CANFD_ESI),
+                bitrate_switch=bool(ics_msg.StatusBitField3 & ics.SPY_STATUS3_CANFD_BRS),
                 channel=ics_msg.NetworkID,
             )
         else:
@@ -349,9 +335,7 @@ class NeoViBus(BusABC):
                 is_extended_id=bool(ics_msg.StatusBitField & ics.SPY_STATUS_XTD_FRAME),
                 is_fd=is_fd,
                 is_rx=not bool(ics_msg.StatusBitField & ics.SPY_STATUS_TX_MSG),
-                is_remote_frame=bool(
-                    ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME
-                ),
+                is_remote_frame=bool(ics_msg.StatusBitField & ics.SPY_STATUS_REMOTE_FRAME),
                 channel=ics_msg.NetworkID,
             )
 
