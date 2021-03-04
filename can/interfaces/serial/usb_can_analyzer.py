@@ -77,9 +77,12 @@ class UsbCanAnalyzer(BusABC):
         byte_msg.append(crc)
 
         self.ser.write(byte_msg)
-        self.ser.flush()
+        time.sleep(1)
+        # self.ser.flush()
 
     def shutdown(self):
+        self.ser.reset_output_buffer()
+        self.ser.reset_input_buffer()
         self.ser.close()
 
     def flush_tx_buffer(self):
@@ -93,7 +96,7 @@ class UsbCanAnalyzer(BusABC):
         byte_msg += msg.data
         byte_msg.append(0x55)
         self.ser.write(byte_msg)
-        self.ser.flush()
+        # self.ser.flush()
 
     def _recv_internal(self, timeout):
         try:
