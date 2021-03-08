@@ -10,6 +10,12 @@ from serial.tools import list_ports
 logger = logging.getLogger(__name__)
 
 
+def wait(t):
+    w = time.perf_counter()
+    while time.perf_counter() - w < t:
+        continue
+
+
 class UsbCanAnalyzer(BusABC):
 
     BITRATE = {
@@ -55,7 +61,13 @@ class UsbCanAnalyzer(BusABC):
         self.filter_id = bytearray([0x00, 0x00, 0x00, 0x00])
         self.mask_id = bytearray([0x00, 0x00, 0x00, 0x00])
         self.ser = serial.serial_for_url(
-            channel, baudrate=baudrate, bytesize=8, parity="N", stopbits=1, timeout=timeout, rtscts=False
+            channel,
+            baudrate=baudrate,
+            bytesize=8,
+            parity="N",
+            stopbits=1,
+            timeout=timeout,
+            rtscts=False,
         )
 
         super().__init__(channel=channel, *args, **kwargs)
@@ -77,8 +89,7 @@ class UsbCanAnalyzer(BusABC):
         byte_msg.append(crc)
 
         self.ser.write(byte_msg)
-        time.sleep(1)
-        # self.ser.flush()
+        self.ser.flush()
 
     def shutdown(self):
         self.ser.reset_output_buffer()
@@ -96,7 +107,8 @@ class UsbCanAnalyzer(BusABC):
         byte_msg += msg.data
         byte_msg.append(0x55)
         self.ser.write(byte_msg)
-        # self.ser.flush()
+        self.ser.flush()
+        wait(0.0001)
 
     def _recv_internal(self, timeout):
         try:
@@ -110,7 +122,10 @@ class UsbCanAnalyzer(BusABC):
             is_remote_frame = tyep & 0x10
             dlc = (tyep << 4 & 0xFF) >> 4
             arb_id = (
-                struct.unpack("<I" if is_extended_id else "<H", bytearray(self.ser.read(4 if is_extended_id else 2)))
+                struct.unpack(
+                    "<I" if is_extended_id else "<H",
+                    bytearray(self.ser.read(4 if is_extended_id else 2)),
+                )
             )[0]
             data = self.ser.read(dlc)
             rxd_byte = ord(self.ser.read(1))
